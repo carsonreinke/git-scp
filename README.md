@@ -11,7 +11,7 @@ cp git-scp /usr/local/bin
 ## Usage
 
 ```
-git scp <username@hostname> <target-dir> N #Changes for HEAD~N..HEAD
+git scp <username@hostname> <target-dir> <commits> #Changes for HEAD~<commits>..HEAD
 git scp <username@hostname> <target-dir> origin
 git scp <username@hostname> <target-dir> status
 ```
