@@ -11,9 +11,22 @@ cp git-scp /usr/local/bin
 ## Usage
 
 ```
-git scp <username@hostname> <target-dir> head
+git scp <username@hostname> <target-dir> N
+git scp <username@hostname> <target-dir> origin
 git scp <username@hostname> <target-dir> status
 ```
+
+##Examples
+
+Replace N with a number `git scp deploy@myhost.com /home/www/ 5` will use a git log of `HEAD~5..HEAD` and deploy the modifications to the target
+
+Using `origin` will specify `origin..HEAD`.
+
+Using `status` will specificy current `git status`
+
+
+
+
 
 After several Gist versions going, finally decided to just put this in a repo, thanks @codeaid:
 * https://gist.github.com/codeaid/5a97956bb0bacd6a38d5
