@@ -1,0 +1,208 @@
+#!/bin/bash
+IFS=$'\n'
+
+escape() {
+    echo -e "\033[$1"
+}
+
+# misc styles
+c_reset=`escape 0m`
+c_bold_on=`escape 1m` ; c_bold_off=`escape 22m`
+c_underline_on=`escape 4m` ; c_underline_off=`escape 24m`
+
+# foreground colors
+fg_default=`escape 39m`
+fg_black=`escape 30m`
+fg_red=`escape "1;31m"`
+fg_green=`escape 32m`
+fg_brown=`escape 33m`
+fg_blue=`escape 34m`
+fg_magenta=`escape 35m`
+fg_cyan=`escape 36m`
+fg_white=`escape 37m`
+
+# background colors
+bg_default=`escape 49m`
+bg_black=`escape 40m`
+bg_red=`escape 41m`
+bg_green=`escape 42m`
+bg_brown=`escape 43m`
+bg_blue=`escape 44m`
+bg_magenta=`escape 45m`
+bg_cyan=`escape 46m`
+bg_white=`escape 47m`
+
+me=$(basename $0)
+
+# ensure we have two arguments
+if [ $# -lt 2 ]
+then
+    echo
+    echo "  usage: git scp <username@hostname> <target-dir> ([head/origin/X])"
+    echo
+    exit 1
+fi
+
+username=$1
+
+# remove trailing slashes and escape spaces
+targetdir=$(echo $2 | sed 's/\/*$//g' | sed 's/ /\\ /g')
+
+
+if [[ ! $3 ]]
+    then
+        head_option='status'
+    else
+        head_option=$3
+fi
+
+if [ $head_option != 'origin' -a  $head_option != 'status' ]
+    then
+        head_option="HEAD~$head_option"
+fi
+
+if [ $head_option = 'status' ]
+    then
+        changes=$(git status --porcelain 2>&1)
+    else
+        changes=$(git log $head_option..HEAD --name-status --pretty="format:" --abbrev-commit | tail -r | awk '!x[$0]++' 2>&1)
+fi
+
+
+# get list of all changed files
+#changes=$(git log HEAD~1..HEAD --name-status --pretty="format:" --abbrev-commit 2>&1)
+#changes=$(git status --porcelain 2>&1)
+# exit if git status returned an error code
+
+if [ $? -ne 0 ]
+then
+    echo
+    echo "  ${fg_red}$changes${c_reset}"
+    echo
+    exit 1
+fi
+
+# file counters
+num_modified=0
+num_deleted=0
+
+# file length counters
+maxfilelength=0
+filelength=0
+
+# extract added and modified files
+files_modified=$(echo "$changes" | sed -nE 's/( )?[AM]+( |[^I])?//p' | tr -d "\"")
+
+# extract deleted files
+files_deleted=$(echo "$changes" | sed -nE 's/( )?[D]+( |[^I])?//p' | tr -d "\"")
+
+# print modified files (if any)
+if [ "$files_modified" != "" ]
+then 
+    echo 
+    echo " The following files will be COPIED:"
+
+    for file in $files_modified;
+    do
+        echo "      ${fg_green}$file${c_reset}"
+        ((num_modified++))
+
+        filelength=$(echo "$file" | wc -c)
+        if [ $filelength -gt $maxfilelength ]
+        then
+            maxfilelength=$filelength
+        fi
+    done
+
+    echo " ${fg_cyan}Total files: $num_modified${c_reset}"
+fi
+
+# print deleted files (if any)
+if [ "$files_deleted" != "" ]
+then 
+    echo
+    echo " The following files will be DELETED:"
+
+    for file in $files_deleted;
+    do
+        echo "      ${fg_red}$file${c_reset}"
+        ((num_deleted++))
+
+        filelength=$(echo "$file" | wc -c)
+        if [ $filelength -gt $maxfilelength ]
+        then
+            maxfilelength=$filelength
+        fi
+    done
+
+    echo " ${fg_cyan}Total files: $num_deleted${c_reset}"
+fi
+
+if [ $num_modified -eq 0 ] && [ $num_deleted -eq 0 ]
+then
+    echo
+    echo "Nothing to sync"
+    echo
+    exit 0
+fi
+
+echo 
+echo -n 'Do you want to continue (yes/no)?: '
+read answer
+
+# exit it "yes" or "y" not received
+if [ "$answer" != "yes" ] && [ "$answer" != "y" ]
+then
+    echo
+    exit 1
+fi
+
+echo
+
+# copy files
+if [ "$num_modified" -gt 0 ]
+then
+    echo "  ${c_underline_on}Copying:${c_reset}"
+    
+    for file in $files_modified;
+    do
+        mask=$(printf '%%-%ds' $maxfilelength)
+        printf "      $mask " $file
+
+        filedir=$(dirname "$file" | sed 's/ /\\ /g')
+        output=$(scp -q "$file" $username:"$targetdir/$filedir" 2>&1)
+
+        if [ $? -eq 0 ]
+        then
+            echo "${fg_green}ok${c_reset}"
+        else
+            echo "${fg_red}failed${c_reset} ($output)"
+        fi
+    done
+
+    echo
+fi
+
+# delete files
+if [ "$num_deleted" -gt 0 ]
+then
+    echo "  ${c_underline_on}Deleting:${c_reset}"
+
+    for file in $files_deleted;
+    do
+        mask=$(printf '%%-%ds' $maxfilelength)
+        printf "      $mask " $file
+
+        filedir=$(dirname "$file" | sed 's/ /\\ /g')
+        output=$(ssh -q $username rm -f "$targetdir/$file" 2>&1)
+
+        if [ $? -eq 0 ]
+        then
+            echo "${fg_green}ok${c_reset}"
+        else
+            echo "${fg_red}failed${c_reset} ($output)"
+        fi
+    done
+    
+    echo
+fi
