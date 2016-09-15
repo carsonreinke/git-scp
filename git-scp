@@ -38,7 +38,7 @@ me=$(basename $0)
 if [ $# -lt 2 ]
 then
     echo
-    echo "  usage: git scp <username@hostname> <target-dir> ([head/origin/X])"
+    echo "  usage: git scp <username@hostname> <target-dir> [status|origin|N]"
     echo
     exit 1
 fi
