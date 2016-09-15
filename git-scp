@@ -65,7 +65,7 @@ if [ $head_option = 'status' ]
     then
         changes=$(git status --porcelain 2>&1)
     else
-        changes=$(git log $head_option..HEAD --name-status --pretty="format:" --abbrev-commit | tail -r | awk '!x[$0]++' 2>&1)
+        changes=$(git log $head_option..HEAD --name-status --pretty="format:" --abbrev-commit | awk '!x[$2]++' 2>&1)
 fi
 
 
