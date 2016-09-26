@@ -91,10 +91,10 @@ maxfilelength=0
 filelength=0
 
 # extract added and modified files
-files_modified=$(echo "$changes" | sed -nE 's/^( )+[AM]+( |[^I])//p' | tr -d "\"")
+files_modified=$(echo "$changes" | sed -nE 's/^( )*[AM]+([ ^I]+)//p' | tr -d "\"")
 
 # extract deleted files
-files_deleted=$(echo "$changes" | sed -nE 's/^( )+[D]+( |[^I])//p' | tr -d "\"")
+files_deleted=$(echo "$changes" | sed -nE 's/^( )*[D]+([ ^I]+)//p' | tr -d "\"")
 
 # print modified files (if any)
 if [ "$files_modified" != "" ]
