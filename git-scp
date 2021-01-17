@@ -38,7 +38,7 @@ me=$(basename $0)
 if [ $# -lt 2 ]
 then
     echo
-    echo "  usage: git scp <username@hostname> <target-dir> [status|origin|N]"
+    echo "  usage: git scp <username@hostname> <target-dir> [status|origin|N] [-y]"
     echo
     exit 1
 fi
@@ -48,15 +48,27 @@ username=$1
 # remove trailing slashes and escape spaces
 targetdir=$(echo $2 | sed 's/\/*$//g' | sed 's/ /\\ /g')
 
+dash_y=0
+
 
 if [[ ! $3 ]]
-    then
-        head_option='status'
-    else
-        head_option=$3
+then
+    head_option='status'
+elif [[ $3 == '-y' ]]
+then
+    head_option='status'
+    dash_y=1
+else
+    head_option=$3
 fi
 
-if [ $head_option != 'origin' -a  $head_option != 'status' ]
+if [[ $4 ]] && [[ $4 == '-y' ]]
+then
+    dash_y=1
+fi
+
+
+if [ $head_option != 'origin' -a $head_option != 'status' ]
     then
         head_option="HEAD~$head_option"
 fi
@@ -98,8 +110,8 @@ files_deleted=$(echo "$changes" | sed -nE 's/^( )*[D]+([ 	]+)//p' | tr -d "\"")
 
 # print modified files (if any)
 if [ "$files_modified" != "" ]
-then 
-    echo 
+then
+    echo
     echo " The following files will be COPIED:"
 
     for file in $files_modified;
@@ -119,7 +131,7 @@ fi
 
 # print deleted files (if any)
 if [ "$files_deleted" != "" ]
-then 
+then
     echo
     echo " The following files will be DELETED:"
 
@@ -146,15 +158,18 @@ then
     exit 0
 fi
 
-echo 
-echo -n 'Do you want to continue (yes/no)?: '
-read answer
-
-# exit it "yes" or "y" not received
-if [ "$answer" != "yes" ] && [ "$answer" != "y" ]
+if [ $dash_y -ne 1 ]
 then
     echo
-    exit 1
+    echo -n 'Do you want to continue (yes/no)?: '
+    read answer
+
+    # exit it "yes" or "y" not received
+    if [ "$answer" != "yes" ] && [ "$answer" != "y" ]
+    then
+        echo
+        exit 1
+    fi
 fi
 
 echo
@@ -163,7 +178,7 @@ echo
 if [ "$num_modified" -gt 0 ]
 then
     echo "  ${c_underline_on}Copying:${c_reset}"
-    
+
     for file in $files_modified;
     do
         mask=$(printf '%%-%ds' $maxfilelength)
@@ -208,6 +223,6 @@ then
             echo "${fg_red}failed${c_reset} ($output)"
         fi
     done
-    
+
     echo
 fi
